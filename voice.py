@@ -27,7 +27,8 @@ def voice():
              voice='alice', 
              language='en-US')
     
-    return str(resp)
+    # Return with proper content type for Twilio
+    return str(resp), 200, {'Content-Type': 'text/xml'}
 
 if __name__ == "__main__":
     # Use PORT from environment variable (Render sets this) or default to 5000
