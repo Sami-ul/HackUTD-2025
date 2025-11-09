@@ -8,3 +8,40 @@ recordings/
 call_analysis/
 *.mp3
 *.wav
+
+
+# Dependencies
+hack25/node_modules/
+hack25/package-lock.json
+hack25/yarn.lock
+hack25/pnpm-lock.yaml
+
+# Build outputs
+hack25/dist/
+hack25/build/
+hack25/*.local
+
+# Environment variables
+hack25/.env
+hack25/.env.local
+hack25/.env.production.local
+hack25/.env.development.local
+
+# IDE
+hack25/.vscode/
+hack25/.idea/
+hack25/*.swp
+hack25/*.swo
+hack25/*~
+
+# OS
+hack25/.DS_Store
+hack25/Thumbs.db
+
+# Logs
+hack25/logs/
+hack25/*.log
+hack25/npm-debug.log*
+hack25/yarn-debug.log*
+hack25/yarn-debug.log*
+hack25/yarn-error.log*
