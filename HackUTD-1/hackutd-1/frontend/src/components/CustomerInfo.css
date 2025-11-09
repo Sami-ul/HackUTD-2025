@@ -1,0 +1,52 @@
+.customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.info-value {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.info-note {
+  color: #9ca3af;
+  font-style: italic;
+  margin-top: 12px;
+}
+
+.info-notes {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.info-notes strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.info-notes p {
+  color: #6b7280;
+  line-height: 1.6;
+}
+
