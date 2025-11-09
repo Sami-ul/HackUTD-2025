@@ -1,77 +1,148 @@
 import os
+import json
+import base64
 from flask import Flask, request
-from twilio.twiml.voice_response import VoiceResponse
+from flask_sock import Sock
+from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 
 app = Flask(__name__)
+sock = Sock(app)
+
+# Store for audio data and transcriptions
+call_data = {}
 
 @app.route("/", methods=['GET'])
 def home():
     """Home endpoint to verify the server is running."""
-    return "Twilio Voice Server is running! Use the /voice endpoint for call handling."
+    return "Twilio Voice Server with WebSocket streaming is running!"
 
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
-    """Respond to incoming phone calls with a brief message."""
-    # Log all incoming request data for debugging
+    """Handle incoming phone calls and set up media stream."""
+    call_sid = request.form.get('CallSid', 'unknown')
+    
     print("=" * 50)
-    print(f"Method: {request.method}")
-    print(f"Form Data: {request.form}")
-    print(f"Args: {request.args}")
+    print(f"Incoming call: {call_sid}")
+    print(f"From: {request.form.get('From')}")
+    print(f"To: {request.form.get('To')}")
     print("=" * 50)
     
-    # Start our TwiML response
+    # Initialize call data storage
+    call_data[call_sid] = {
+        'audio_chunks': [],
+        'transcriptions': [],
+        'sentiment': []
+    }
+    
+    # Start TwiML response
     resp = VoiceResponse()
     
-    # Greet the caller and ask for input
-    resp.say("Hello! Thank you for calling. Please tell me how I can help you.", 
+    # Greet the caller
+    resp.say("Hello! Thank you for calling. Your call is now being monitored for sentiment analysis. Please speak naturally.", 
              voice='alice', 
              language='en-US')
     
-    # Use <Gather> to collect speech input
-    resp.gather(
-        input='speech',
-        action='/process-speech',
-        method='POST',
-        speechTimeout='auto',
-        language='en-US'
-    )
+    # Start bi-directional media stream
+    connect = Connect()
+    stream = Stream(url=f'wss://{request.host}/media-stream')
+    connect.append(stream)
+    resp.append(connect)
     
-    # If no input is detected, say goodbye
-    resp.say("I didn't hear anything. Goodbye!", voice='alice', language='en-US')
+    # Keep the call alive
+    resp.say("Thank you for your call. Goodbye!", voice='alice', language='en-US')
     
-    # Return with proper content type for Twilio
     return str(resp), 200, {'Content-Type': 'text/xml'}
 
-@app.route("/process-speech", methods=['GET', 'POST'])
-def process_speech():
-    """Process the speech input from the caller."""
-    # Get the speech result from Twilio
-    speech_result = request.form.get('SpeechResult', '')
-    confidence = request.form.get('Confidence', '')
+@sock.route('/media-stream')
+def media_stream(ws):
+    """Handle WebSocket connection for real-time audio streaming."""
+    call_sid = None
+    stream_sid = None
     
-    # Log what the user said
-    print("=" * 50)
-    print(f"User said: {speech_result}")
-    print(f"Confidence: {confidence}")
-    print(f"All form data: {request.form}")
-    print("=" * 50)
+    print("WebSocket connection established")
     
-    # Start response
-    resp = VoiceResponse()
+    while True:
+        try:
+            message = ws.receive()
+            if message is None:
+                break
+                
+            data = json.loads(message)
+            event_type = data.get('event')
+            
+            if event_type == 'start':
+                # Stream started
+                stream_sid = data['streamSid']
+                call_sid = data['start']['callSid']
+                print(f"Stream started: {stream_sid} for call: {call_sid}")
+                
+            elif event_type == 'media':
+                # Audio data received
+                media = data['media']
+                audio_payload = media['payload']  # Base64 encoded audio (mulaw)
+                
+                # Decode audio (this is mulaw encoded audio at 8kHz)
+                # audio_bytes = base64.b64decode(audio_payload)
+                
+                # Store audio chunk for processing
+                if call_sid and call_sid in call_data:
+                    call_data[call_sid]['audio_chunks'].append(audio_payload)
+                
+                # TODO: Send audio to sentiment analysis
+                # For now, just log that we received audio
+                if len(call_data.get(call_sid, {}).get('audio_chunks', [])) % 100 == 0:
+                    print(f"Received {len(call_data[call_sid]['audio_chunks'])} audio chunks")
+                
+                # PLACEHOLDER: Perform sentiment analysis
+                sentiment_score = analyze_sentiment_placeholder(audio_payload)
+                if sentiment_score and call_sid in call_data:
+                    call_data[call_sid]['sentiment'].append(sentiment_score)
+                
+            elif event_type == 'stop':
+                # Stream stopped
+                print(f"Stream stopped: {stream_sid}")
+                if call_sid and call_sid in call_data:
+                    print(f"Total audio chunks received: {len(call_data[call_sid]['audio_chunks'])}")
+                    print(f"Sentiment data: {call_data[call_sid]['sentiment']}")
+                break
+                
+        except Exception as e:
+            print(f"Error in WebSocket: {str(e)}")
+            break
     
-    if speech_result:
-        # For now, respond with a placeholder that includes what they said
-        resp.say(f"I heard you say: {speech_result}. This is a placeholder response. We will process your request soon.", 
-                 voice='alice', 
-                 language='en-US')
-    else:
-        resp.say("I'm sorry, I didn't catch that.", voice='alice', language='en-US')
+    print("WebSocket connection closed")
+
+def analyze_sentiment_placeholder(audio_chunk):
+    """
+    PLACEHOLDER function for sentiment analysis.
+    Replace this with actual sentiment analysis using:
+    - Speech-to-text (Deepgram, AssemblyAI, Google Speech-to-Text)
+    - Sentiment analysis (OpenAI, Anthropic, HuggingFace)
     
-    # Say goodbye
-    resp.say("Thank you for calling. Goodbye!", voice='alice', language='en-US')
-    resp.hangup()
+    Returns: dict with sentiment score (positive/negative/neutral)
+    """
+    # For now, return a random placeholder
+    # In production, you would:
+    # 1. Convert audio to text
+    # 2. Analyze text for sentiment
+    # 3. Return sentiment score
     
-    return str(resp), 200, {'Content-Type': 'text/xml'}
+    return {
+        'sentiment': 'neutral',
+        'score': 0.5,
+        'timestamp': 'placeholder'
+    }
+
+@app.route("/sentiment/<call_sid>", methods=['GET'])
+def get_sentiment(call_sid):
+    """API endpoint to retrieve sentiment data for a call."""
+    if call_sid in call_data:
+        return {
+            'call_sid': call_sid,
+            'total_chunks': len(call_data[call_sid]['audio_chunks']),
+            'sentiment_data': call_data[call_sid]['sentiment']
+        }
+    return {'error': 'Call not found'}, 404
 
 if __name__ == "__main__":
     # Use PORT from environment variable (Render sets this) or default to 5000
