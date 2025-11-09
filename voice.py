@@ -22,12 +22,51 @@ def voice():
     # Start our TwiML response
     resp = VoiceResponse()
     
-    # Read a message aloud to the caller
-    resp.say("Hello! Thank you for calling. This is a Twilio powered voice response. Have a great day!", 
+    # Greet the caller and ask for input
+    resp.say("Hello! Thank you for calling. Please tell me how I can help you.", 
              voice='alice', 
              language='en-US')
     
+    # Use <Gather> to collect speech input
+    gather = resp.gather(
+        input='speech',
+        action='/process-speech',
+        method='POST',
+        speechTimeout='auto',
+        language='en-US'
+    )
+    
+    # If no input is detected, say goodbye
+    resp.say("I didn't hear anything. Goodbye!", voice='alice', language='en-US')
+    
     # Return with proper content type for Twilio
+    return str(resp), 200, {'Content-Type': 'text/xml'}
+
+@app.route("/process-speech", methods=['POST'])
+def process_speech():
+    """Process the speech input from the caller."""
+    # Get the speech result from Twilio
+    speech_result = request.form.get('SpeechResult', '')
+    confidence = request.form.get('Confidence', '')
+    
+    # Log what the user said
+    print("=" * 50)
+    print(f"User said: {speech_result}")
+    print(f"Confidence: {confidence}")
+    print("=" * 50)
+    
+    # Start response
+    resp = VoiceResponse()
+    
+    # For now, respond with a placeholder that includes what they said
+    resp.say(f"I heard you say: {speech_result}. This is a placeholder response. We will process your request soon.", 
+             voice='alice', 
+             language='en-US')
+    
+    # Say goodbye
+    resp.say("Thank you for calling. Goodbye!", voice='alice', language='en-US')
+    resp.hangup()
+    
     return str(resp), 200, {'Content-Type': 'text/xml'}
 
 if __name__ == "__main__":
