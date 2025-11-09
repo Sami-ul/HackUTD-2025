@@ -28,7 +28,7 @@ def voice():
              language='en-US')
     
     # Use <Gather> to collect speech input
-    gather = resp.gather(
+    resp.gather(
         input='speech',
         action='/process-speech',
         method='POST',
@@ -42,7 +42,7 @@ def voice():
     # Return with proper content type for Twilio
     return str(resp), 200, {'Content-Type': 'text/xml'}
 
-@app.route("/process-speech", methods=['POST'])
+@app.route("/process-speech", methods=['GET', 'POST'])
 def process_speech():
     """Process the speech input from the caller."""
     # Get the speech result from Twilio
@@ -53,15 +53,19 @@ def process_speech():
     print("=" * 50)
     print(f"User said: {speech_result}")
     print(f"Confidence: {confidence}")
+    print(f"All form data: {request.form}")
     print("=" * 50)
     
     # Start response
     resp = VoiceResponse()
     
-    # For now, respond with a placeholder that includes what they said
-    resp.say(f"I heard you say: {speech_result}. This is a placeholder response. We will process your request soon.", 
-             voice='alice', 
-             language='en-US')
+    if speech_result:
+        # For now, respond with a placeholder that includes what they said
+        resp.say(f"I heard you say: {speech_result}. This is a placeholder response. We will process your request soon.", 
+                 voice='alice', 
+                 language='en-US')
+    else:
+        resp.say("I'm sorry, I didn't catch that.", voice='alice', language='en-US')
     
     # Say goodbye
     resp.say("Thank you for calling. Goodbye!", voice='alice', language='en-US')
