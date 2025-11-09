@@ -36,6 +36,7 @@ twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 conversation_history = {}
 call_recordings = {}  # Store recording URLs and metadata
 customer_cache = {}  # Cache customer data per call
+tool_result_cache = {}  # Cache tool results for speed
 
 # Create recordings directory if it doesn't exist
 RECORDINGS_DIR = 'recordings'
@@ -174,39 +175,11 @@ def process():
     return str(resp), 200, {'Content-Type': 'text/xml'}
 
 def format_for_speech(text):
-    """Format text to be more readable by TTS engines."""
-    import re
-    
-    # Format dollar amounts: $95.00 -> "95 dollars"
-    text = re.sub(r'\$(\d+)\.00', r'\1 dollars', text)
-    text = re.sub(r'\$(\d+\.\d+)', r'\1 dollars', text)
-    text = re.sub(r'\$(\d+)', r'\1 dollars', text)
-    
-    # Format email addresses: spell them out with pauses
-    def format_email(match):
-        email = match.group(0)
-        # Replace @ and . with spoken words
-        email = email.replace('@', ' at ')
-        email = email.replace('.', ' dot ')
-        return email
-    
-    text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', format_email, text)
-    
-    # Format dates: 2025-11-15 -> "November 15th"
-    def format_date(match):
-        date_str = match.group(0)
-        try:
-            from datetime import datetime
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-            return date_obj.strftime("%B %d")
-        except:
-            return date_str
-    
-    text = re.sub(r'\d{4}-\d{2}-\d{2}', format_date, text)
-    
-    # Format GB: 50GB -> "50 gigabytes"
-    text = re.sub(r'(\d+)\s*GB', r'\1 gigabytes', text)
-    
+    """Ultra-fast TTS formatting - critical replacements only."""
+    # Fast replacements for common patterns
+    text = text.replace('$', '').replace('.00', '')  # "$95.00" → "95"
+    text = text.replace('@', ' at ').replace('.com', ' dot com')  # emails
+    text = text.replace('GB', ' gigabytes')  # data usage
     return text
 
 def get_nemotron_response(call_sid, user_message):
@@ -223,48 +196,37 @@ def get_nemotron_response(call_sid, user_message):
         # Build messages
         messages = []
         
-        # OPTIMIZED system prompt with tool instructions
-        system_prompt = f"""You are a fast, efficient customer service AI for a telecom company. Keep responses to 1-2 SHORT sentences.
-
-CRITICAL: When customer asks about their account, IMMEDIATELY use tools:
-- Bill/payment questions → check_bill
-- Plan details → check_plan  
-- Data usage → check_data_usage
-- Call history → get_call_history
-- Upgrades → get_upgrade_eligibility
-- Account info → get_account_info
-
-Customer calling: {customer['name'] if customer else 'Unknown'} from {from_number}
-{"Account ID: " + customer['account_id'] if customer else ""}
-
-Be CONCISE and ACTION-ORIENTED. Use tools proactively."""
+        # ULTRA-COMPACT system prompt for maximum speed
+        system_prompt = f"""Fast telecom AI. ONE sentence only.
+Tools: check_bill, check_plan, check_data_usage, get_upgrade_eligibility
+Customer: {customer['name'] if customer else 'Unknown'}
+Use tools immediately."""
 
         messages.append({'role': 'system', 'content': system_prompt})
         
-        # Add history (prune to last 4 exchanges for speed)
-        if len(conversation_history[call_sid]) > 8:
-            messages.extend(conversation_history[call_sid][-8:])
+        # MINIMAL history - last 4 messages only for speed
+        if len(conversation_history[call_sid]) > 4:
+            messages.extend(conversation_history[call_sid][-4:])
         else:
             messages.extend(conversation_history[call_sid])
         
         messages.append({'role': 'user', 'content': user_message})
         
-        # Define tools for Nemotron
+        # REDUCED tools - only most common for speed
         tools = [
-            {"type": "function", "function": {"name": "check_bill", "description": "Get customer's monthly bill amount and due date", "parameters": {"type": "object", "properties": {}, "required": []}}},
-            {"type": "function", "function": {"name": "check_plan", "description": "Get plan details and features", "parameters": {"type": "object", "properties": {}, "required": []}}},
-            {"type": "function", "function": {"name": "check_data_usage", "description": "Get current data usage", "parameters": {"type": "object", "properties": {}, "required": []}}},
-            {"type": "function", "function": {"name": "get_call_history", "description": "Get previous interactions", "parameters": {"type": "object", "properties": {}, "required": []}}},
-            {"type": "function", "function": {"name": "get_upgrade_eligibility", "description": "Check upgrade eligibility", "parameters": {"type": "object", "properties": {}, "required": []}}},
-            {"type": "function", "function": {"name": "get_account_info", "description": "Get account info", "parameters": {"type": "object", "properties": {}, "required": []}}}
+            {"type": "function", "function": {"name": "check_bill", "description": "Get bill", "parameters": {"type": "object", "properties": {}, "required": []}}},
+            {"type": "function", "function": {"name": "check_plan", "description": "Get plan", "parameters": {"type": "object", "properties": {}, "required": []}}},
+            {"type": "function", "function": {"name": "check_data_usage", "description": "Get data", "parameters": {"type": "object", "properties": {}, "required": []}}},
+            {"type": "function", "function": {"name": "get_upgrade_eligibility", "description": "Check upgrade", "parameters": {"type": "object", "properties": {}, "required": []}}}
         ]
         
-        # FAST API call with function calling
+        # SPEED-OPTIMIZED API call with function calling
         response = openrouter_client.chat.completions.create(
             model="nvidia/nemotron-nano-9b-v2:free",
             messages=messages,
-            max_tokens=60,
-            temperature=0.7,
+            max_tokens=40,        # REDUCED from 60 for speed
+            temperature=0.5,      # REDUCED from 0.7 for faster token selection
+            top_p=0.85,           # ADDED for speed optimization
             tools=tools,
             tool_choice="auto"
         )
@@ -273,15 +235,18 @@ Be CONCISE and ACTION-ORIENTED. Use tools proactively."""
         
         # Check if model wants to call a tool
         if message.tool_calls:
-            print(f"🔧 Tool call requested: {message.tool_calls[0].function.name}")
-            
-            # Execute the tool call
             tool_call = message.tool_calls[0]
             tool_name = tool_call.function.name
             
-            # Call the tool with cached customer phone number
-            tool_result = call_tool(tool_name, from_number)
-            print(f"✅ Tool result: {json.dumps(tool_result)[:100]}...")
+            # CACHED tool execution for speed
+            cache_key = f"{call_sid}_{tool_name}"
+            if cache_key in tool_result_cache:
+                tool_result = tool_result_cache[cache_key]
+                print(f"⚡ Tool cached: {tool_name}")
+            else:
+                tool_result = call_tool(tool_name, from_number)
+                tool_result_cache[cache_key] = tool_result
+                print(f"🔧 Tool called: {tool_name}")
             
             # Add tool call and result to messages
             messages.append({
@@ -295,12 +260,13 @@ Be CONCISE and ACTION-ORIENTED. Use tools proactively."""
                 'content': json.dumps(tool_result)
             })
             
-            # Get final response from model with tool result
+            # Get final response from model with tool result - SPEED OPTIMIZED
             final_response = openrouter_client.chat.completions.create(
                 model="nvidia/nemotron-nano-9b-v2:free",
                 messages=messages,
-                max_tokens=50,
-                temperature=0.7
+                max_tokens=35,        # REDUCED from 50 for speed
+                temperature=0.5,      # REDUCED from 0.7
+                top_p=0.85           # ADDED for speed
             )
             
             ai_response = final_response.choices[0].message.content.strip()
@@ -316,12 +282,7 @@ Be CONCISE and ACTION-ORIENTED. Use tools proactively."""
             conversation_history[call_sid].append({'role': 'user', 'content': user_message})
             conversation_history[call_sid].append({'role': 'assistant', 'content': ai_response})
         
-        # Keep responses ultra-concise - max 2 sentences
-        sentences = ai_response.split('.')
-        if len(sentences) > 2:
-            ai_response = '. '.join(sentences[:2]) + '.'
-        
-        # Format for speech (dollars, emails, etc.)
+        # FAST formatting - minimal processing
         ai_response = format_for_speech(ai_response)
         
         return ai_response
@@ -752,6 +713,11 @@ def end_call():
         del customer_cache[call_sid]
     if f"{call_sid}_phone" in customer_cache:
         del customer_cache[f"{call_sid}_phone"]
+    
+    # Cleanup tool result cache for this call
+    keys_to_delete = [k for k in tool_result_cache.keys() if k.startswith(call_sid)]
+    for key in keys_to_delete:
+        del tool_result_cache[key]
     
     resp = VoiceResponse()
     resp.say("Thank you for calling. Goodbye!", 
