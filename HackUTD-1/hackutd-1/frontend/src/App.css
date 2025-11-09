@@ -1,0 +1,191 @@
+.App {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.waiting-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waiting-content {
+  text-align: center;
+  color: white;
+}
+
+.waiting-content h1 {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.waiting-content p {
+  font-size: 24px;
+  opacity: 0.9;
+}
+
+.pending-count {
+  margin-top: 20px;
+  font-size: 18px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.card-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #5568d3;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+}
+
+.sentiment-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.sentiment-very-positive {
+  background: #10b981;
+  color: white;
+}
+
+.sentiment-positive {
+  background: #34d399;
+  color: white;
+}
+
+.sentiment-neutral {
+  background: #6b7280;
+  color: white;
+}
+
+.sentiment-negative {
+  background: #f59e0b;
+  color: white;
+}
+
+.sentiment-very-negative {
+  background: #ef4444;
+  color: white;
+}
+
+.urgency-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.urgency-high {
+  background: #ef4444;
+  color: white;
+}
+
+.urgency-medium {
+  background: #f59e0b;
+  color: white;
+}
+
+.urgency-low {
+  background: #10b981;
+  color: white;
+}
+
+.transcript-line {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.transcript-customer {
+  background: #fef3c7;
+  border-left-color: #f59e0b;
+}
+
+.transcript-agent {
+  background: #dbeafe;
+  border-left-color: #3b82f6;
+}
+
+.transcript-speaker {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #374151;
+}
+
+.transcript-text {
+  color: #6b7280;
+}
+
+.transcript-time {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 4px;
+}

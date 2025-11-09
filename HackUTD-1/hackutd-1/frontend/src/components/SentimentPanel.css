@@ -1,0 +1,104 @@
+.sentiment-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sentiment-display {
+  padding: 20px;
+}
+
+.sentiment-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sentiment-icon {
+  font-size: 48px;
+}
+
+.sentiment-score {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.emotion-urgency {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.emotion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.emotion-icon {
+  font-size: 32px;
+}
+
+.emotion-label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.emotion-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  text-transform: capitalize;
+}
+
+.urgency-item {
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.urgency-score {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.sentiment-chart {
+  padding: 16px;
+  height: 200px;
+}
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #9ca3af;
+}
+
+.sentiment-change {
+  padding: 12px;
+  margin: 16px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.sentiment-change.positive {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.sentiment-change.negative {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
