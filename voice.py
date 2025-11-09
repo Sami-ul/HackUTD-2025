@@ -11,6 +11,7 @@ from config import SERVER_PORT, SERVER_HOST, SAMPLE_RATE, TWILIO_SAMPLE_RATE
 from audio_processor import TwilioAudioProcessor
 from nemo_intent_model import NeMoIntentModel
 from nemotron_agent import NemotronCustomerCareAgent
+from sentiment_analyzer import sentiment_analyzer
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +26,8 @@ intent_model = NeMoIntentModel()
 
 logger.info("Initializing Nemotron agent...")
 agent = NemotronCustomerCareAgent()
+
+logger.info("Sentiment analyzer ready...")
 
 # Store for call data
 call_data = {}
@@ -47,11 +50,13 @@ def voice():
     print(f"To: {request.form.get('To')}")
     print("=" * 50)
     
-    # Initialize call data storage
+    # Initialize call data storage with sentiment tracking
     call_data[call_sid] = {
         'audio_chunks': [],
         'intent_detected': None,
-        'agent_response': None
+        'agent_response': None,
+        'sentiment_data': [],
+        'sentiment_summary': None
     }
     
     # Start TwiML response
@@ -123,7 +128,7 @@ def media_stream(ws):
                         process_with_agent(audio_processor, call_sid)
                 
             elif event_type == 'stop':
-                # Stream stopped - process final audio
+                # Stream stopped - process final audio and generate sentiment summary
                 logger.info(f"Stream stopped: {stream_sid}")
                 
                 accumulated_audio = audio_processor.get_accumulated_audio()
@@ -131,9 +136,16 @@ def media_stream(ws):
                     process_with_agent_final(accumulated_audio, call_sid)
                 
                 if call_sid and call_sid in call_data:
+                    # Generate final sentiment summary
+                    sentiment_summary = sentiment_analyzer.get_call_summary(call_sid)
+                    call_data[call_sid]['sentiment_summary'] = sentiment_summary
+                    
                     logger.info(f"Total audio chunks received: {len(call_data[call_sid]['audio_chunks'])}")
                     logger.info(f"Intent detected: {call_data[call_sid]['intent_detected']}")
                     logger.info(f"Agent response: {call_data[call_sid]['agent_response']}")
+                    logger.info(f"📊 Final Sentiment: {sentiment_summary.get('overall_emoji')} "
+                               f"{sentiment_summary.get('overall_sentiment')} "
+                               f"(avg: {sentiment_summary.get('average_score', 0):.2f})")
                 
                 break
                 
@@ -153,19 +165,39 @@ def process_with_agent(audio_processor, call_sid):
         return
     
     try:
-        # Step 1: Detect intent from audio using NeMo
-        raw_intent = intent_model.infer(accumulated_audio)
+        # Step 1: Transcribe audio using NeMo ASR
+        transcription = intent_model.infer(accumulated_audio)
         
-        if not raw_intent:
-            logger.warning("Could not detect intent from audio")
+        if not transcription:
+            logger.warning("Could not transcribe audio")
             return
         
-        parsed_intent = intent_model.parse_intent_output(raw_intent)
-        logger.info(f"Detected intent: {parsed_intent}")
+        # Step 2: Parse basic intent from transcription
+        parsed_intent = intent_model.parse_intent_output(transcription)
+        logger.info(f"Transcription: {transcription}")
+        logger.info(f"Detected intent: {parsed_intent['intent']}")
         
         call_data[call_sid]['intent_detected'] = parsed_intent
         
-        # Step 2: Use Nemotron agent to process and respond
+        # Step 3: LIVE SENTIMENT ANALYSIS ✨
+        sentiment_result = sentiment_analyzer.analyze_text(transcription)
+        sentiment_progression = sentiment_analyzer.analyze_call_progression(call_sid, sentiment_result)
+        
+        # Store sentiment data
+        call_data[call_sid]['sentiment_data'].append({
+            'transcription': transcription,
+            'sentiment': sentiment_result,
+            'progression': sentiment_progression
+        })
+        
+        logger.info(f"📊 Sentiment: {sentiment_result['sentiment_label']} | "
+                   f"Score: {sentiment_result['sentiment_score']} | "
+                   f"Emotions: {sentiment_result['emotions']}")
+        
+        if sentiment_result['should_escalate']:
+            logger.warning(f"⚠️  ESCALATION RECOMMENDED: {sentiment_progression['trend']}")
+        
+        # Step 4: Use Nemotron agent to process intelligently
         account_id = parsed_intent.get("slots", {}).get("account_id", "12345")
         intent_name = parsed_intent.get("intent")
         
@@ -173,7 +205,7 @@ def process_with_agent(audio_processor, call_sid):
             account_id=account_id,
             intent=intent_name,
             slots=parsed_intent.get("slots", {}),
-            transcription="[Customer inquiry detected]"
+            transcription=transcription
         )
         
         logger.info(f"Agent result: {agent_result}")
@@ -191,15 +223,16 @@ def process_with_agent_final(audio_array, call_sid):
         return
     
     try:
-        # Detect final intent
-        raw_intent = intent_model.infer(audio_array)
+        # Transcribe final audio
+        transcription = intent_model.infer(audio_array)
         
-        if not raw_intent:
-            logger.warning("Could not detect final intent")
+        if not transcription:
+            logger.warning("Could not transcribe final audio")
             return
         
-        parsed_intent = intent_model.parse_intent_output(raw_intent)
-        logger.info(f"Final intent detected: {parsed_intent}")
+        parsed_intent = intent_model.parse_intent_output(transcription)
+        logger.info(f"Final transcription: {transcription}")
+        logger.info(f"Final intent detected: {parsed_intent['intent']}")
         
         # Run final agent interaction
         account_id = parsed_intent.get("slots", {}).get("account_id", "12345")
@@ -208,7 +241,7 @@ def process_with_agent_final(audio_array, call_sid):
             account_id=account_id,
             intent=parsed_intent.get("intent"),
             slots=parsed_intent.get("slots", {}),
-            transcription="[Final customer inquiry]"
+            transcription=transcription
         )
         
         logger.info(f"Final agent result: {agent_result}")
@@ -221,14 +254,66 @@ def process_with_agent_final(audio_array, call_sid):
 
 @app.route("/call_data/<call_sid>", methods=['GET'])
 def get_call_data(call_sid):
-    """API endpoint to retrieve call data."""
+    """API endpoint to retrieve call data with sentiment analysis."""
+    if call_sid in call_data:
+        data = call_data[call_sid]
+        return {
+            'call_sid': call_sid,
+            'total_chunks': len(data['audio_chunks']),
+            'intent_detected': data['intent_detected'],
+            'agent_response': data['agent_response'],
+            'sentiment_data': data['sentiment_data'],
+            'sentiment_summary': data['sentiment_summary']
+        }
+    return {'error': 'Call not found'}, 404
+
+
+@app.route("/sentiment/<call_sid>", methods=['GET'])
+def get_sentiment(call_sid):
+    """Get real-time sentiment analysis for a call."""
+    if call_sid in call_data:
+        sentiment_data = call_data[call_sid].get('sentiment_data', [])
+        
+        if sentiment_data:
+            latest = sentiment_data[-1]
+            return {
+                'call_sid': call_sid,
+                'latest_sentiment': latest['sentiment'],
+                'progression': latest['progression'],
+                'total_interactions': len(sentiment_data)
+            }
+        else:
+            return {
+                'call_sid': call_sid,
+                'message': 'No sentiment data yet'
+            }
+    return {'error': 'Call not found'}, 404
+
+
+@app.route("/sentiment/<call_sid>/history", methods=['GET'])
+def get_sentiment_history(call_sid):
+    """Get complete sentiment history for a call."""
     if call_sid in call_data:
         return {
             'call_sid': call_sid,
-            'total_chunks': len(call_data[call_sid]['audio_chunks']),
-            'intent_detected': call_data[call_sid]['intent_detected'],
-            'agent_response': call_data[call_sid]['agent_response']
+            'sentiment_history': call_data[call_sid].get('sentiment_data', []),
+            'summary': call_data[call_sid].get('sentiment_summary')
         }
+    return {'error': 'Call not found'}, 404
+
+
+@app.route("/sentiment/<call_sid>/summary", methods=['GET'])
+def get_sentiment_summary(call_sid):
+    """Get sentiment summary for a completed call."""
+    if call_sid in call_data:
+        summary = call_data[call_sid].get('sentiment_summary')
+        if summary:
+            return summary
+        else:
+            return {
+                'call_sid': call_sid,
+                'message': 'Call in progress or no sentiment data'
+            }
     return {'error': 'Call not found'}, 404
 
 
@@ -239,7 +324,16 @@ def health():
         "status": "ok",
         "nemo_model": "loaded",
         "agent_model": "loaded",
-        "active_calls": len(call_data)
+        "sentiment_analyzer": "active",
+        "active_calls": len(call_data),
+        "features": [
+            "Real-time Speech-to-Text (NeMo ASR)",
+            "Intent Detection",
+            "AI Agent (Nemotron)",
+            "Live Sentiment Analysis ✨",
+            "Emotion Detection",
+            "Escalation Recommendations"
+        ]
     }, 200
 
 

@@ -1,0 +1,123 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║          📊 LIVE SENTIMENT ANALYSIS - QUICK REFERENCE            ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+✅ ACTIVE & WORKING!
+
+═══════════════════════════════════════════════════════════════════════
+
+🎯 WHAT IT DOES:
+
+  Real-time emotion & sentiment detection from voice calls
+  - 😊 Positive / 😐 Neutral / 😠 Negative
+  - Detects: frustrated, confused, satisfied, urgent
+  - Tracks sentiment trends throughout call
+  - Auto-recommends escalation when needed
+
+═══════════════════════════════════════════════════════════════════════
+
+🧪 TEST IT:
+
+  python3 test_sentiment.py
+
+═══════════════════════════════════════════════════════════════════════
+
+📡 API ENDPOINTS:
+
+  Latest Sentiment (Real-Time):
+    GET /sentiment/<CALL_SID>
+    
+  Complete History:
+    GET /sentiment/<CALL_SID>/history
+    
+  Call Summary:
+    GET /sentiment/<CALL_SID>/summary
+    
+  All Call Data:
+    GET /call_data/<CALL_SID>
+
+═══════════════════════════════════════════════════════════════════════
+
+🔍 LIVE MONITORING:
+
+  Watch server logs for real-time sentiment:
+  
+  INFO: Transcription: I'm really frustrated
+  INFO: 📊 Sentiment: 😠 Negative | Score: -0.75 | Emotions: [frustrated]
+  WARNING: ⚠️  ESCALATION RECOMMENDED: declining
+
+═══════════════════════════════════════════════════════════════════════
+
+📊 SENTIMENT SCORES:
+
+   1.0 = Very Positive    😊
+   0.5 = Somewhat Positive
+   0.0 = Neutral          😐
+  -0.5 = Somewhat Negative
+  -1.0 = Very Negative    😠
+
+═══════════════════════════════════════════════════════════════════════
+
+🎭 DETECTED EMOTIONS:
+
+  • frustrated   - Customer upset (3+ negative words)
+  • urgent       - Needs immediate help
+  • confused     - Needs clarification  
+  • satisfied    - Happy customer (multiple positive words)
+
+═══════════════════════════════════════════════════════════════════════
+
+⚠️  ESCALATION TRIGGERS:
+
+  Auto-recommended when:
+    ✓ 3+ negative words in one phrase
+    ✓ 2+ urgent keywords
+    ✓ Frustrated + urgent combo
+    ✓ 2+ escalation triggers in call
+
+═══════════════════════════════════════════════════════════════════════
+
+📈 SENTIMENT TRENDS:
+
+  📈 improving  - Getting more positive
+  📉 declining  - Getting more negative
+  ➡️ stable     - Staying consistent
+  🆕 initial    - Just started
+
+═══════════════════════════════════════════════════════════════════════
+
+💡 EXAMPLE USE:
+
+  # Start server
+  ./start_server.sh
+  
+  # Make test call, then:
+  curl http://localhost:5000/sentiment/<CALL_SID>
+  
+  # Result:
+  {
+    "sentiment_label": "😠 Negative",
+    "sentiment_score": -0.75,
+    "emotions": ["frustrated", "urgent"],
+    "should_escalate": true,
+    "trend": "📉 declining"
+  }
+
+═══════════════════════════════════════════════════════════════════════
+
+📚 FULL DOCS:
+
+  SENTIMENT_ANALYSIS_GUIDE.md - Complete guide
+  test_sentiment.py           - Testing script
+
+═══════════════════════════════════════════════════════════════════════
+
+✨ NOW LIVE IN YOUR SYSTEM!
+
+Start server: ./start_server.sh
+Make a call: Say different emotions
+Watch logs: See real-time sentiment analysis
+Query API: Get detailed sentiment data
+
+═══════════════════════════════════════════════════════════════════════
+

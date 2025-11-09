@@ -1,0 +1,35 @@
+STEPS TO MAKE IT WORK:
+
+1. Stop current server (Ctrl+C in terminal)
+
+2. Make sure ngrok is running in SEPARATE terminal:
+   ngrok http 5000
+
+3. Copy the HTTPS URL from ngrok (like https://abc123.ngrok.io)
+
+4. Go to Twilio Console:
+   https://console.twilio.com/us1/develop/phone-numbers/manage/incoming
+
+5. Click your phone number
+
+6. Under "Voice Configuration":
+   A CALL COMES IN:  Webhook
+   URL: https://YOUR-NGROK-URL.ngrok.io/voice
+   Method: HTTP POST
+
+7. Click SAVE
+
+8. Start server:
+   python3 voice_conversational.py
+
+9. Call your Twilio number
+
+10. SPEAK - you should see logs showing:
+    - WebSocket connected
+    - Stream started  
+    - User said: (your speech)
+    - LLM decided to call tools
+    - Tool results
+    - AI response
+
+If WebSocket doesn't connect, the ngrok URL in Twilio is wrong.
