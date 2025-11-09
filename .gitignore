@@ -4,3 +4,7 @@ __pycache__/
 .env
 *.log
 .DS_Store
+recordings/
+call_analysis/
+*.mp3
+*.wav
