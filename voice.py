@@ -17,11 +17,11 @@ app = Flask(__name__)
 sock = Sock(app)
 
 # API Keys and Config
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyDpJ5bEKUQWnoIOYuUb0lAKl2HcDhfzYDg')
-TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', 'AC9056fdc891fed16a55a128f9d14c8bba')
-TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '05c5255761a3e713c44447a532d574ba')
-DEEPGRAM_API_KEY = os.environ.get('DEEPGRAM_API_KEY', 'aa55f81e6d4b0de0d7166cb8226c1d5f8301b92a')
-HUMAN_AGENT_PHONE = os.environ.get('HUMAN_AGENT_PHONE', '+17202990300')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+DEEPGRAM_API_KEY = os.environ.get('DEEPGRAM_API_KEY', '')
+HUMAN_AGENT_PHONE = os.environ.get('HUMAN_AGENT_PHONE', '')
 
 # Initialize Gemini
 genai.configure(api_key=GEMINI_API_KEY)
